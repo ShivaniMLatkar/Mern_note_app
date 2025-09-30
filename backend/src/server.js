@@ -1,44 +1,48 @@
 import express from "express";
+import cors from "cors";
+import path from "path";
+
 import notesRoutes from "./routes/notesRoutes.js";
-import { connectDB } from "../config/db.js";
+import { connectDB } from "./config/db.js";
 import dotenv from "dotenv";
 import rateLimiter from "./middleware/ratelimiter.js";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001
-connectDB().then(() => {
-    app.listen(PORT, () =>{
-    console.log("Server started in port:", PORT);
-});
-});
+const PORT = process.env.PORT || 5001;
+const __dirname = path.resolve();
 
-app.use(express.json()); //this middleware will parse JSON bodies: req.body
+// middleware
+if (process.env.NODE_ENV !== "production") {
+  app.use(
+    cors({
+      origin: "http://localhost:5173",
+    })
+  );
+}
+app.use(express.json()); // this middleware will parse JSON bodies: req.body
 app.use(rateLimiter);
+
+// our simple custom middleware
+// app.use((req, res, next) => {
+//   console.log(`Req method is ${req.method} & Req URL is ${req.url}`);
+//   next();
+// });
+
 app.use("/api/notes", notesRoutes);
 
-// //const express = require("express");
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-// const app = express();
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  });
+}
 
-// app.get("/api/notes",(req, res) => {
-//     //get existing notes
-//     res.status(200).send("you got 10 notes");
-// });
-// app.post("/api/notes",(req, res) => {
-//     //send notes to server
-//     res.status(201).json({message:"Your note has been created successfully"})
-// });
-// app.update("/api/notes/:id",(req, res) => {
-//     //send notes to server
-//     res.status(202).json({message:"Your note updated successfully"})
-// });
-
-// app.delete("/api/notes/:id",(req, res) => {
-//     //send notes to server
-//     res.status(202).json({message:"Your note deleted successfully"})
-// });
-
-
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log("Server started on PORT:", PORT);
+  });
+});
 
